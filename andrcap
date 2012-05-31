@@ -6,18 +6,18 @@
 )
 
 
-import com.android.ddmlib.AndroidDebugBridge;
-import com.android.ddmlib.IDevice;
-import com.android.ddmlib.Log;
-import com.android.ddmlib.RawImage;
-import com.android.ddmlib.Log.ILogOutput;
-import com.android.ddmlib.Log.LogLevel;
+import com.android.ddmlib.AndroidDebugBridge
+import com.android.ddmlib.IDevice
+import com.android.ddmlib.Log
+import com.android.ddmlib.RawImage
+import com.android.ddmlib.Log.ILogOutput
+import com.android.ddmlib.Log.LogLevel
 
-import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
+import java.awt.image.BufferedImage
+import java.io.File
+import java.io.IOException
 
-import javax.imageio.ImageIO;
+import javax.imageio.ImageIO
 
 public class AndroidScreenCapture  implements AndroidDebugBridge.IDeviceChangeListener {
 
@@ -63,7 +63,7 @@ public class AndroidScreenCapture  implements AndroidDebugBridge.IDeviceChangeLi
     void capture(String filepath) {
         try {
             // now get the devices
-            IDevice[] devices = bridge.getDevices();
+            IDevice[] devices = bridge.getDevices()
             if (devices == null || devices.size() < 1) {
                 println "didn't get device"
                 return
@@ -82,12 +82,12 @@ public class AndroidScreenCapture  implements AndroidDebugBridge.IDeviceChangeLi
     }
 
     private BufferedImage getDeviceImage(IDevice device, boolean landscape) throws IOException {
-        RawImage rawImage;
+        RawImage rawImage
         try {
-            rawImage = device.getScreenshot();
+            rawImage = device.getScreenshot()
         }
         catch (IOException ioe) {
-            println("Unable to get frame buffer: " + ioe.getMessage());
+            println("Unable to get frame buffer: " + ioe.getMessage())
             return
         }
 
@@ -107,14 +107,14 @@ public class AndroidScreenCapture  implements AndroidDebugBridge.IDeviceChangeLi
     }
 
     private BufferedImage convertRawImage(RawImage rawImage) {
-        BufferedImage image = new BufferedImage(rawImage.width, rawImage.height, BufferedImage.TYPE_INT_ARGB);
-        int index = 0;
-        int IndexInc = rawImage.bpp >> 3;
+        BufferedImage image = new BufferedImage(rawImage.width, rawImage.height, BufferedImage.TYPE_INT_ARGB)
+        int index = 0
+        int IndexInc = rawImage.bpp >> 3
         for (int y = 0; y < rawImage.height; y++) {
             for (int x = 0; x < rawImage.width; x++) {
-                int value = rawImage.getARGB(index);
-                index += IndexInc;
-                image.setRGB(x, y, value);
+                int value = rawImage.getARGB(index)
+                index += IndexInc
+                image.setRGB(x, y, value)
             }
         }
 
@@ -123,7 +123,7 @@ public class AndroidScreenCapture  implements AndroidDebugBridge.IDeviceChangeLi
 
     private void writeImage(BufferedImage image, String filepath) {
         if (!ImageIO.write(image, "png", new File(filepath))) {
-            throw new IOException("Failed to find png writer");
+            throw new IOException("Failed to find png writer")
         }
 
         println "wrote ${filepath}"
