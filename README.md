@@ -11,3 +11,4 @@ The script is very no-frills - it captures the first hardware device that it fin
 
 Based on code found at https://github.com/roman10/roman10-android-tutorial/blob/master/screenshot/src/com/android/screenshot/Screenshot.java
 
+
