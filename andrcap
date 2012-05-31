@@ -1,7 +1,7 @@
 #!/usr/bin/env groovy
 
 @Grapes(
-@Grab(group = 'com.google.android.tools', module = 'ddmlib', version = 'r10')
+@Grab(group = 'com.google.android.tools', module = 'ddmlib', version = 'r13')
 )
 
 
