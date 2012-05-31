@@ -1,10 +1,10 @@
 #!/usr/bin/env groovy
 
 @Grapes(
-	@Grab(group='com.google.android.tools', module='ddmlib', version='r10')
+@Grab(group = 'com.google.android.tools', module = 'ddmlib', version = 'r10')
 )
 
-            
+
 import com.android.ddmlib.AndroidDebugBridge;
 import com.android.ddmlib.IDevice;
 import com.android.ddmlib.Log;
@@ -18,100 +18,125 @@ import java.io.IOException;
 
 import javax.imageio.ImageIO;
 
-public static void main(String[] args) {
-	if(args.length == 1) {
-		capture(args[0])
-	} else {
-		println "usage - andrcap <filename.png>"
-	}
+public class AndroidScreenCapture  implements AndroidDebugBridge.IDeviceChangeListener {
+
+    String filepath
+    AndroidDebugBridge bridge
+    boolean deviceConnected = false
+
+    public static void main(String[] args) {
+        if (args.length == 1) {
+            new AndroidScreenCapture(args[0]).connect()
+        } else {
+            println "usage - andrcap <filename.png>"
+        }
+    }
+
+    public AndroidScreenCapture(filepath) {
+        this.filepath = filepath
+        if (!this.filepath.endsWith('.png')) {
+            this.filepath += '.png'
+        }
+
+        AndroidDebugBridge.init(false)
+        AndroidDebugBridge.addDeviceChangeListener(this)
+    }
+
+    void connect() {
+        bridge = AndroidDebugBridge.createBridge()
+
+        // wait up to 10 seconds for connection to the device,
+        // terminate if no connection
+        for(i in 1..10) {
+            Thread.sleep(1000)
+            if(deviceConnected) {
+                break
+            }
+        }
+        if(!deviceConnected) {
+            println "failed to connect to device"
+            AndroidDebugBridge.terminate()
+        }
+    }
+
+    void capture(String filepath) {
+        try {
+            // now get the devices
+            IDevice[] devices = bridge.getDevices();
+            if (devices == null || devices.size() < 1) {
+                println "didn't get device"
+                return
+            }
+
+            def device = devices[0]
+
+            def landscape = false
+            BufferedImage image = getDeviceImage(device, landscape)
+
+            writeImage(image, filepath)
+
+        } finally {
+            AndroidDebugBridge.terminate()
+        }
+    }
+
+    private BufferedImage getDeviceImage(IDevice device, boolean landscape) throws IOException {
+        RawImage rawImage;
+        try {
+            rawImage = device.getScreenshot();
+        }
+        catch (IOException ioe) {
+            println("Unable to get frame buffer: " + ioe.getMessage());
+            return
+        }
+
+        // device/adb not available?
+        if (rawImage == null) {
+            println "device not available"
+            return
+        }
+
+        print "capturing ${rawImage.width}x${rawImage.height} image from ${device}..."
+
+        if (landscape) {
+            rawImage = rawImage.getRotated()
+        }
+
+        convertRawImage(rawImage)
+    }
+
+    private BufferedImage convertRawImage(RawImage rawImage) {
+        BufferedImage image = new BufferedImage(rawImage.width, rawImage.height, BufferedImage.TYPE_INT_ARGB);
+        int index = 0;
+        int IndexInc = rawImage.bpp >> 3;
+        for (int y = 0; y < rawImage.height; y++) {
+            for (int x = 0; x < rawImage.width; x++) {
+                int value = rawImage.getARGB(index);
+                index += IndexInc;
+                image.setRGB(x, y, value);
+            }
+        }
+
+        image
+    }
+
+    private void writeImage(BufferedImage image, String filepath) {
+        if (!ImageIO.write(image, "png", new File(filepath))) {
+            throw new IOException("Failed to find png writer");
+        }
+
+        println "wrote ${filepath}"
+    }
+
+    void deviceConnected(IDevice device) {
+        deviceConnected = true
+        capture(filepath)
+    }
+
+    void deviceDisconnected(IDevice device) {
+        deviceConnected = false
+    }
+
+    void deviceChanged(IDevice device, int changeMask) {
+    }
 }
-
-public static void capture(String filepath) {
-	try{
-		//println "initializing bridge"
-		AndroidDebugBridge.init(false)
-
-		//println "instantiating bridge"
-		AndroidDebugBridge bridge = AndroidDebugBridge.createBridge();
-
-		//println "getting device list"
-		int count = 0;
-		while (bridge.hasInitialDeviceList() == false) {
-		    try {
-		        Thread.sleep(100);
-		        count++;
-		    } catch (InterruptedException e) {
-		        // pass
-		    }
-
-		    // let's not wait > 10 sec.
-		    if (count > 100) {
-		        System.err.println("Timeout getting device list!");
-		        return;
-		    }
-		}
-
-		// now get the devices
-		IDevice[] devices = bridge.getDevices();
-		if(devices == null || devices.size() < 1) {
-			println "didn't get device"
-			exit(1)
-		}
-
-		def device = devices[0]
-		//println "got device: ${device}"
-
-		//println "taking screenshot:"
-		def landscape = false
-		getDeviceImage(device, filepath, landscape);
-	
-		//println "Done!"
-
-	} finally {
-		AndroidDebugBridge.terminate()
-	}
-}
-
-	private static void getDeviceImage(IDevice device, String filepath, boolean landscape) throws IOException {
-       RawImage rawImage;
-
-       try {
-           rawImage = device.getScreenshot();
-       }
-       catch (IOException ioe) {
-           println("Unable to get frame buffer: " + ioe.getMessage());
-		   return
-       }
-
-       // device/adb not available?
-       if (rawImage == null)
-           return;
-
-       if (landscape) {
-           rawImage = rawImage.getRotated();
-       }
-
-       // convert raw data to an Image
-	   if(!filepath.endsWith('.png')) {
-			filepath += '.png'
-	   }
-	
-	   println "capturing ${rawImage.width}x${rawImage.height} image from ${device} to ${filepath}"
-  
-       BufferedImage image = new BufferedImage(rawImage.width, rawImage.height, BufferedImage.TYPE_INT_ARGB);
-
-       int index = 0;
-       int IndexInc = rawImage.bpp >> 3;
-       for (int y = 0 ; y < rawImage.height ; y++) {
-           for (int x = 0 ; x < rawImage.width ; x++) {
-               int value = rawImage.getARGB(index);
-               index += IndexInc;
-               image.setRGB(x, y, value);
-           }
-       }
-
-       if (!ImageIO.write(image, "png", new File(filepath))) {
-           throw new IOException("Failed to find png writer");
-       }
-	}
-
